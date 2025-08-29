@@ -6,6 +6,7 @@ class User1(models.Model):
         ('producer', 'Producer'),
         ('buyer', 'Buyer'),
         ('regulator', 'Regulator'),
+        ('verifier', 'Verifier')
     )
 
     user_id = models.AutoField(primary_key=True)
