@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'auth1',
     'api',
     'rest_framework',
+    'corsheaders',
     'rest_framework_simplejwt',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -52,6 +53,8 @@ REST_FRAMEWORK={
 }
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -62,6 +65,15 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'h2ledger.urls'
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = [
+    "content-type",
+    "authorization",
+    # add any others you use
+]
+
 
 TEMPLATES = [
     {
