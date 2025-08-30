@@ -50,14 +50,11 @@ def login(request):
     return Response({"message": "Login failed"}, status=400)
 
 
-@api_view(['POST','GET'])
+@api_view(['POST'])
 def signup(request):
-
-    if request.method == "POST":
-
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            return Response({"message":True,"user":user})
-
-    return Response({"message": "Signup failed"}, status=400)
+    serializer = UserSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+     
+        return Response(UserSerializer(user).data)
+    return Response(serializer.errors, status=400)
