@@ -1,10 +1,4 @@
-<<<<<<< HEAD
-// src/services/api.ts
-import axios, { AxiosInstance, AxiosRequestConfig } from "axios"
-=======
-// src/services/ApiService.ts?
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosRequestConfig } from "axios"
->>>>>>> 7e5893a87840be1b38c7c94893d8611725d74dd0
 import { tokenStorage } from "../utils/token"
 
 class ApiService {
@@ -18,33 +12,34 @@ class ApiService {
       },
     })
 
-<<<<<<< HEAD
-    // ---------- Request Interceptor ----------
-    this.api.interceptors.request.use((config: AxiosRequestConfig) => {
-      const token = tokenStorage.get()
-      if (token) {
-        // Fix TypeScript error by casting headers to 'any'
-        if (!config.headers) config.headers = {} as any
-        (config.headers as any).Authorization = `Bearer ${token}`
-=======
-    // Request interceptor → attach token
+    // Request interceptor: attach token
     this.api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
       const token = tokenStorage.getAccessToken()
-      if (token) {
-        // Axios v1+ uses AxiosHeaders, which has a set() method
-        if (config.headers.set) {
-          config.headers.set("Authorization", `Bearer ${token}`)
+      if (token && config.headers) {
+        const authHeader = `Bearer ${token}`
+        if (typeof config.headers.set === "function") {
+          config.headers.set("Authorization", authHeader)
         } else {
-          // fallback for possible legacy types
-          config.headers["Authorization"] = `Bearer ${token}`
+          config.headers["Authorization"] = authHeader
         }
->>>>>>> 7e5893a87840be1b38c7c94893d8611725d74dd0
       }
       return config
     })
+
+    // Response interceptor for global error handling
+    this.api.interceptors.response.use(
+      response => response,
+      error => {
+        if (error.response?.status === 401) {
+          // Handle unauthorized access
+          tokenStorage.removeAccessToken()
+          // Redirect to login or show error message
+        }
+        return Promise.reject(error)
+      }
+    )
   }
 
-  // ---------- HTTP Methods ----------
   get<T = any>(url: string, config?: AxiosRequestConfig) {
     return this.api.get<T>(url, config)
   }

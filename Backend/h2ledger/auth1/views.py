@@ -49,7 +49,7 @@ def login(request):
             #JWT Token
             print("Password true")
             token = create_jwt_token(user)
-            return Response({"token": token,"role": user.role,"email": user.email}, status=200)
+            return Response({"token": token,"role": user.role,"email": user.email,"wallet_id": user.wallet_address}, status=200)
 
     return Response({"message": "Login failed"}, status=400)
 
