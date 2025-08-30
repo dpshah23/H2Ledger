@@ -7,13 +7,14 @@ from django.shortcuts import render
 #tranfer -> store in db -> hash ("tx_id","credit_id",# "credit_info","from_user_id","from_user_name","to_user_id","to_user_name","tx_type","amount","fiat_value_usd","tx_hash","timestamp",)
 #Use -> store 
 import hashlib , time
-from django.utils.timezone import now
+from django.utils.timezone import now , timedelta
 from rest_framework.response import Response
 from rest_framework import status
 from .models import *
 from .serializers import *
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from django.db.models import Sum, Count
 
 
 
@@ -193,13 +194,10 @@ def transfer_credit(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def verify_batch(request):
-    """
-    ✅ Verifier/Regulator approves or rejects a hydrogen batch.
-    """
+    
     try:
         user = request.user
 
-        # 1️⃣ Only verifier/regulator can approve
         if user.role not in ["verifier", "regulator"]:
             return Response(
                 {"error": "Only verifiers or regulators can approve batches"},
@@ -207,7 +205,7 @@ def verify_batch(request):
             )
 
         batch_id = request.data.get("batch_id")
-        approve = request.data.get("approve", True)  # default = approve
+        approve = request.data.get("approve", True)  
 
         batch = HydrogenBatch.objects.get(batch_id=batch_id)
 
@@ -231,9 +229,7 @@ def verify_batch(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def use_credit(request):
-    """
-    ✅ Buyer uses (retires/burns) credits.
-    """
+    
     try:
         user = request.user
 
@@ -243,24 +239,19 @@ def use_credit(request):
         if not credit_id or not amount:
             return Response({"error": "credit_id and amount are required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 🔎 Get credit
         credit = Credit.objects.get(credit_id=credit_id, owner=user)
 
-        # ❌ Prevent over-burning
         if amount > credit.amount:
             return Response({"error": "Insufficient credit balance"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 🔐 Update credit status
         credit.amount -= amount
         if credit.amount == 0:
             credit.status = "burned"
         credit.save()
 
-        # 🔑 Generate tx_hash
         raw_data = f"{credit_id}{user.user_id}{amount}{time.time()}"
         tx_hash = hashlib.sha256(raw_data.encode()).hexdigest()
 
-        # 📝 Store transaction
         tx = Transaction.objects.create(
             credit=credit,
             from_user=user,
@@ -284,5 +275,71 @@ def use_credit(request):
 
     except Credit.DoesNotExist:
         return Response({"error": "Credit not found or not owned by you"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def dashboard_view(request):
+    try:
+        user = request.user
+
+        total_credits = Credit.objects.filter(owner=user, status="active").aggregate(total=Sum("amount"))["total"] or 0
+
+        today = now().date()
+        week_start = today - timedelta(days=7)
+
+        credits_traded_today = Transaction.objects.filter(
+            tx_type="transfer", timestamp__date=today
+        ).aggregate(total=Sum("amount"))["total"] or 0
+
+        credits_traded_week = Transaction.objects.filter(
+            tx_type="transfer", timestamp__date__gte=week_start
+        ).aggregate(total=Sum("amount"))["total"] or 0
+
+        recent_tx = Transaction.objects.filter(tx_type="transfer").order_by("-timestamp")[:10]
+        if recent_tx.exists():
+            avg_price = sum([float(t.fiat_value_usd or 0) / float(t.amount or 1) for t in recent_tx]) / len(recent_tx)
+        else:
+            avg_price = 0
+
+        emissions_offset = Transaction.objects.filter(
+            tx_type="burn", from_user=user
+        ).aggregate(total=Sum("amount"))["total"] or 0
+
+        monthly_target = 12000 
+        monthly_progress = (emissions_offset / monthly_target) * 100 if monthly_target > 0 else 0
+
+        trend = []
+        for i in range(5, 0, -1):
+            day = today - timedelta(days=i)
+            day_tx = Transaction.objects.filter(tx_type="transfer", timestamp__date=day)
+            if day_tx.exists():
+                avg_day_price = sum([float(t.fiat_value_usd or 0) / float(t.amount or 1) for t in day_tx]) / len(day_tx)
+            else:
+                avg_day_price = avg_price
+            trend.append({"date": str(day), "price": round(avg_day_price, 2)})
+
+        return Response(
+            {
+                "total_credits_owned": total_credits,
+                "credits_traded": {
+                    "today": credits_traded_today,
+                    "this_week": credits_traded_week,
+                },
+                "market_price": {
+                    "current": round(avg_price, 2),
+                    "change_24h": "+2.3%",  
+                },
+                "emissions_offset": {
+                    "total": emissions_offset,
+                    "monthly_progress": round(monthly_progress, 2),
+                    "target": monthly_target,
+                },
+                "market_price_trend": trend,
+            },
+            status=status.HTTP_200_OK,
+        )
+
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
