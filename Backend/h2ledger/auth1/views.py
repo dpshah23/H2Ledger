@@ -54,11 +54,16 @@ def login(request):
     return Response({"message": "Login failed"}, status=400)
 
 
-@api_view(['POST'])
+@api_view(['POST','GET','PUT'])
 def signup(request):
     serializer = UserSerializer(data=request.data)
+    print(request.data)
     if serializer.is_valid():
         user = serializer.save()
      
         return Response(UserSerializer(user).data)
+    
+    else:
+        print("Serializer errors:", serializer.errors)
+        return Response(serializer.errors, status=400)
     return Response(serializer.errors, status=400)

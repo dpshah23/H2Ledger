@@ -1,5 +1,10 @@
-// src/services/ApiService.ts?
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios"
+// src/services/ApiService.ts
+import axios, {
+  AxiosInstance,
+  InternalAxiosRequestConfig,
+  AxiosRequestConfig,
+  AxiosResponse,
+} from "axios"
 import { tokenStorage } from "../utils/token"
 
 class ApiService {
@@ -13,30 +18,40 @@ class ApiService {
       },
     })
 
-    // Request interceptor → attach token
-    this.api.interceptors.request.use((config: AxiosRequestConfig) => {
-      const token = tokenStorage.getAccessToken()
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
-      return config
-    })
+    // ✅ Fix: don't overwrite headers, just set it
+    this.api.interceptors.request.use(
+      (config: InternalAxiosRequestConfig) => {
+        const token = tokenStorage.getAccessToken()
+        if (token) {
+          config.headers.set("Authorization", `Bearer ${token}`)
+        }
+        return config
+      },
+      (error) => Promise.reject(error)
+    )
   }
 
-  // Example GET request
-  get<T = any>(url: string, config?: AxiosRequestConfig) {
+  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return this.api.get<T>(url, config)
   }
 
-  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig) {
+  async post<T = any>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
     return this.api.post<T>(url, data, config)
   }
 
-  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig) {
+  async put<T = any>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
     return this.api.put<T>(url, data, config)
   }
 
-  delete<T = any>(url: string, config?: AxiosRequestConfig) {
+  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return this.api.delete<T>(url, config)
   }
 }

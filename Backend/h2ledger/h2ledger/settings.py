@@ -66,13 +66,25 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'h2ledger.urls'
 
+from corsheaders.defaults import default_headers
+
+# settings.py
+
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOW_HEADERS = [
+# ✅ Allowed origins (frontend URLs that can call Django)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",   # Vite dev server
+    "http://127.0.0.1:5173",   # Another local alias
+    "http://localhost:3000",   # If you run frontend on port 3000
+]
+
+# ✅ Allowed headers (keep defaults + add authorization if needed)
+CORS_ALLOW_HEADERS = list(default_headers) + [
     "content-type",
     "authorization",
-    # add any others you use
 ]
+
 
 
 TEMPLATES = [

@@ -1,6 +1,12 @@
-import { apiService } from './api'
-import { tokenStorage , isTokenExpired } from '../utils/token'
-import { API_ENDPOINTS } from '../utils/constants'
+import { apiService } from "./api"
+
+export interface User {
+  user_id: number
+  name: string
+  email: string
+  role: "buyer" | "producer"
+  wallet_address: string
+}
 
 export interface LoginCredentials {
   email: string
@@ -8,56 +14,26 @@ export interface LoginCredentials {
 }
 
 export interface RegisterCredentials {
+  name: string
+  wallet_address: string
   email: string
   password: string
-  firstName: string
-  lastName: string
-}
-
-export interface User {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  role: 'producer' | 'buyer' | 'regulator'
+  role: "buyer" | "producer"
 }
 
 export const authService = {
   async login(credentials: LoginCredentials) {
-    const response = await apiService.post(API_ENDPOINTS.auth.login, credentials)
-    const { access, refresh, user } = response.data
-    
-    tokenStorage.set(access)
-    tokenStorage.setRefresh(refresh)
-    
-    return { user, token: access }
-  },
-
-  async register(credentials: RegisterCredentials) {
-    const response = await apiService.post(API_ENDPOINTS.auth.register, credentials)
-    const { access, refresh, user } = response.data
-    
-    tokenStorage.set(access)
-    tokenStorage.setRefresh(refresh)
-    
-    return { user, token: access }
-  },
-
-  async logout() {
-    try {
-      await apiService.post(API_ENDPOINTS.auth.logout)
-    } finally {
-      tokenStorage.clear()
-    }
-  },
-
-  async getCurrentUser(): Promise<User> {
-    const response = await apiService.get('/auth/user/')
+    const response = await apiService.post("/auth/login/", credentials)
     return response.data
   },
 
-  isAuthenticated(): boolean {
-    const token = tokenStorage.get()
-    return token ? !isTokenExpired(token) : false
-  }
+  async register(credentials: RegisterCredentials) {
+    const response = await apiService.post("/auth/signup/", credentials)
+    return response.data
+  },
+
+  async logout() {
+    localStorage.removeItem("token")
+    localStorage.removeItem("user")
+  },
 }
