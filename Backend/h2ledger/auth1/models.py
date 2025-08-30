@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password,check_password
+from django.contrib.auth.hashers import check_password as django_check_password
 
 class User1(models.Model):
     ROLE_CHOICES = (
@@ -23,7 +24,7 @@ class User1(models.Model):
         super().save(*args, **kwargs)
 
     def check_password(self, password):
-        return self.password == make_password(password)
+        return django_check_password(password, self.password)
 
     def __str__(self):
         return f"{self.name} ({self.role})"

@@ -21,9 +21,10 @@ def create_jwt_token(user):
         "role": user.role
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+    # print(token)
     return token
 
-@api_view(['POST','GET'])
+@api_view(['POST'])
 def login(request):
     """
     User login view.
@@ -38,14 +39,17 @@ def login(request):
 
         try:
             user = User1.objects.get(email=email)
+            print(user)
         except User1.DoesNotExist:
+            print("Doesn't exist")
             return Response({"message": "Login failed"}, status=400)
 
         if user.check_password(password):
             
             #JWT Token
+            print("Password true")
             token = create_jwt_token(user)
-            return Response({"token": token}, status=200)
+            return Response({"token": token,"role": user.role,"email": user.email}, status=200)
 
     return Response({"message": "Login failed"}, status=400)
 
