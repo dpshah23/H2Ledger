@@ -82,6 +82,8 @@ export const Navbar: React.FC = () => {
               </div>
             </div>
 
+
+              {/*Commenting Logout button*/}
             <Button
               variant="ghost"
               size="icon"
