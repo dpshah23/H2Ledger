@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password,check_password
 
 class User1(models.Model):
     ROLE_CHOICES = (
@@ -21,6 +21,9 @@ class User1(models.Model):
         if not self.password.startswith("pbkdf2_sha256$"):
             self.password = make_password(self.password)
         super().save(*args, **kwargs)
+
+    def check_password(self, password):
+        return self.password == make_password(password)
 
     def __str__(self):
         return f"{self.name} ({self.role})"
