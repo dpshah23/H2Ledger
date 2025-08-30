@@ -1,4 +1,3 @@
-
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosRequestConfig } from "axios"
 import { tokenStorage } from "../utils/token"
 
@@ -16,24 +15,26 @@ class ApiService {
     // Request interceptor: attach token
     this.api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
       const token = tokenStorage.getAccessToken()
-      if (token) {
-        if (config.headers && typeof config.headers.set === "function") {
-          config.headers.set("Authorization", `Bearer ${token}`)
-        } else if (config.headers) {
-          (config.headers as any)["Authorization"] = `Bearer ${token}`
+      if (token && config.headers) {
+        const authHeader = `Bearer ${token}`
+        if (typeof config.headers.set === "function") {
+          config.headers.set("Authorization", authHeader)
+        } else {
+          config.headers["Authorization"] = authHeader
         }
       }
       return config
     })
 
-    // Response interceptor: handle errors globally (optional, can be expanded)
+    // Response interceptor for global error handling
     this.api.interceptors.response.use(
       response => response,
       error => {
-        // Example: handle 401 errors globally
-        // if (error.response && error.response.status === 401) {
-        //   // Optionally trigger logout or redirect
-        // }
+        if (error.response?.status === 401) {
+          // Handle unauthorized access
+          tokenStorage.removeAccessToken()
+          // Redirect to login or show error message
+        }
         return Promise.reject(error)
       }
     )
