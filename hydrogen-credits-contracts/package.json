@@ -9,10 +9,19 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "type": "module",
   "devDependencies": {
+<<<<<<< HEAD
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "dotenv": "^17.2.1",
     "hardhat": "^2.26.3"
+=======
+    "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
+    "@nomicfoundation/hardhat-ethers": "^4.0.0",
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "chai": "^6.0.1",
+    "hardhat": "^3.0.3"
+>>>>>>> 651d79700548682a98364cdc1824771b4b76693d
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0"
