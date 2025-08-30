@@ -68,6 +68,19 @@ ROOT_URLCONF = 'h2ledger.urls'
 
 CORS_ALLOW_CREDENTIALS = True
 
+# CORS Configuration
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://localhost:8081",
+    "http://127.0.0.1:5500",
+    "http://127.0.0.1:8081",
+]
+
 CORS_ALLOW_HEADERS = [
     "content-type",
     "authorization",
