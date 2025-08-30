@@ -18,6 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 
 
 @api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def mint_credit(request):
 
     try:
@@ -137,6 +138,7 @@ def mint_credit(request):
 
 
 @api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def transfer_credit(request):
 
     try:
