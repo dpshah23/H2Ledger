@@ -1,5 +1,5 @@
 // src/services/ApiService.ts?
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios"
+import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosRequestConfig } from "axios"
 import { tokenStorage } from "../utils/token"
 
 class ApiService {
@@ -14,10 +14,16 @@ class ApiService {
     })
 
     // Request interceptor → attach token
-    this.api.interceptors.request.use((config: AxiosRequestConfig) => {
+    this.api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
       const token = tokenStorage.getAccessToken()
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`
+      if (token) {
+        // Axios v1+ uses AxiosHeaders, which has a set() method
+        if (config.headers.set) {
+          config.headers.set("Authorization", `Bearer ${token}`)
+        } else {
+          // fallback for possible legacy types
+          config.headers["Authorization"] = `Bearer ${token}`
+        }
       }
       return config
     })

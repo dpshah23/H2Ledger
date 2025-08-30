@@ -1,20 +1,21 @@
-import "@nomicfoundation/hardhat-toolbox";
-import 'dotenv/config'; // automatically loads .env
+require("@nomicfoundation/hardhat-toolbox");
+require("dotenv").config();
 
-/** @type import('hardhat/config').HardhatUserConfig */
-const config = {
+module.exports = {
   solidity: "0.8.20",
   networks: {
     localhost: {
-      url: "http://127.0.0.1:8545", // Hardhat or Ganache local RPC
+      url: "http://127.0.0.1:8545"
     },
     /*
     goerli: {
-      url: process.env.ALCHEMY_URL, // set in your .env
-      accounts: [process.env.MY_WALLET_PRIVATE_KEY], // set in your .env
+      url: process.env.ALCHEMY_URL,       // remove or fix this
+      accounts: [process.env.MY_WALLET_PRIVATE_KEY] // remove or fix this
     }
     */
-  },
-};
 
-export default config;
+     localhost: {
+      url: "http://127.0.0.1:8545", // Hardhat or Ganache local RPC
+    },
+  }
+};

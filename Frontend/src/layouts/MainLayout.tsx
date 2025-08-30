@@ -35,7 +35,7 @@ export const MainLayout: React.FC = () => {
       {/* Wallet Button showing connected address */}
       <WalletButton walletAddress={account} onConnect={connectWallet} />
 
-      <div className="flex h-[calc(100vh-4rem)]"> 
+      <div className="flex h-[calc(100vh-4rem)]">
         {/* Mobile sidebar toggle */}
         <Button
           variant="default"
