@@ -6,7 +6,7 @@ from django.shortcuts import render
 #mint generation 
 #tranfer -> store in db -> hash ("tx_id","credit_id",# "credit_info","from_user_id","from_user_name","to_user_id","to_user_name","tx_type","amount","fiat_value_usd","tx_hash","timestamp",)
 #Use -> store 
-import hashlib
+import hashlib , time
 from django.utils.timezone import now
 from rest_framework.response import Response
 from rest_framework import status
