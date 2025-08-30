@@ -13,9 +13,5 @@ module.exports = {
       accounts: [process.env.MY_WALLET_PRIVATE_KEY] // remove or fix this
     }
     */
-
-     localhost: {
-      url: "http://127.0.0.1:8545", // Hardhat or Ganache local RPC
-    },
   }
 };
