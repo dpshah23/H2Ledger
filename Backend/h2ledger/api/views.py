@@ -16,7 +16,33 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Sum, Count
 
+@api_view(["POST"])
+def create_hydrogen_batch(request):
 
+    try:
+        serializer = HydrogenBatchSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"message": True, "batch": serializer.data},
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+def list_hydrogen_batches(request):
+
+    try:
+        batches = HydrogenBatch.objects.all().order_by("-created_at")
+        serializer = HydrogenBatchSerializer(batches, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(["POST"])
 def mint_credit(request):
