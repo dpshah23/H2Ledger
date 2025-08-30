@@ -1,63 +1,70 @@
+// src/services/auth.ts
 import { apiService } from './api'
-import { tokenStorage , isTokenExpired } from '../utils/token'
+import { tokenStorage } from '../utils/token'
 import { API_ENDPOINTS } from '../utils/constants'
 
+// ---------- Type Definitions ----------
+
+// Login credentials
 export interface LoginCredentials {
   email: string
   password: string
 }
 
+// Registration credentials
 export interface RegisterCredentials {
   email: string
   password: string
-  firstName: string
-  lastName: string
+  name: string                   // full name
+  role: 'producer' | 'consumer'  // only two roles
+  wallet_address: string
 }
 
+// User returned from backend
 export interface User {
-  id: string
+  user_id: string
   email: string
-  firstName: string
-  lastName: string
-  role: 'producer' | 'buyer' | 'regulator'
+  name: string
+  role: 'producer' | 'consumer'
+  wallet_address: string
 }
+
+// ---------- Auth Service ----------
 
 export const authService = {
+
+  // LOGIN
   async login(credentials: LoginCredentials) {
     const response = await apiService.post(API_ENDPOINTS.auth.login, credentials)
-    const { access, refresh, user } = response.data
-    
-    tokenStorage.set(access)
-    tokenStorage.setRefresh(refresh)
-    
-    return { user, token: access }
+    const { token, user } = response.data   // single token from backend
+
+    tokenStorage.set(token)   // store token only
+    return { user, token }
   },
 
+  // REGISTER
   async register(credentials: RegisterCredentials) {
     const response = await apiService.post(API_ENDPOINTS.auth.register, credentials)
-    const { access, refresh, user } = response.data
-    
-    tokenStorage.set(access)
-    tokenStorage.setRefresh(refresh)
-    
-    return { user, token: access }
+    const { token, user } = response.data   // single token
+
+    tokenStorage.set(token)
+    return { user, token }
   },
 
+  // LOGOUT
   async logout() {
-    try {
-      await apiService.post(API_ENDPOINTS.auth.logout)
-    } finally {
-      tokenStorage.clear()
-    }
+    tokenStorage.clear()      // clear token locally
   },
 
+  // GET CURRENT USER
   async getCurrentUser(): Promise<User> {
     const response = await apiService.get('/auth/user/')
     return response.data
   },
 
+  // CHECK AUTHENTICATION
   isAuthenticated(): boolean {
     const token = tokenStorage.get()
-    return token ? !isTokenExpired(token) : false
+    return !!token   // token exists → authenticated
   }
 }

@@ -9,10 +9,19 @@ import { validateEmail, validatePassword, validateRequired } from '../utils/vali
 import { Zap } from 'lucide-react'
 import { BRAND } from '../utils/constants'
 
+// ---------- Only two roles now ----------
+const ROLE_OPTIONS = [
+  { value: '', label: 'Select role' },
+  { value: 'producer', label: 'Producer' },
+  { value: 'consumer', label: 'Consumer' },
+]
+
 export const Register: React.FC = () => {
+  // ---------- Form State ----------
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    name: '',
+    role: '',
+    wallet_address: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -20,57 +29,73 @@ export const Register: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // ---------- Auth Context ----------
   const { register, isAuthenticated } = useAuth()
 
+  // Redirect logged-in users
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
   }
 
-  const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ---------- Handle Input Change ----------
+  const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [field]: e.target.value }))
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }))
+      setErrors(prev => ({ ...prev, [field]: '' })) // clear error on change
     }
   }
 
+  // ---------- Handle Form Submit ----------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setErrors({})
 
-    // Validation
+    // ---------- Validation ----------
     const newErrors: Record<string, string> = {}
-    
-    if (!validateRequired(formData.firstName)) {
-      newErrors.firstName = 'First name is required'
+
+    if (!validateRequired(formData.name)) {
+      newErrors.name = 'Name is required'
     }
-    if (!validateRequired(formData.lastName)) {
-      newErrors.lastName = 'Last name is required'
+    if (!validateRequired(formData.role)) {
+      newErrors.role = 'Role is required'
+    }
+    if (!validateRequired(formData.wallet_address)) {
+      newErrors.wallet_address = 'Wallet address is required'
     }
     if (!validateEmail(formData.email)) {
       newErrors.email = 'Please enter a valid email address'
     }
-    
+
     const passwordValidation = validatePassword(formData.password)
     if (!passwordValidation.isValid) {
       newErrors.password = passwordValidation.message || 'Password is invalid'
     }
-    
+
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match'
     }
 
+    // Stop if there are validation errors
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       setIsLoading(false)
       return
     }
 
+    // ---------- Call Register from Auth Context ----------
     try {
-      await register(formData.email, formData.password, formData.firstName, formData.lastName)
+      await register(
+        formData.email,
+        formData.password,
+        formData.name,
+        formData.role as 'producer' | 'consumer',
+        formData.wallet_address
+      )
+      // After successful registration, redirect to login page
+      window.location.href = '/login?registered=true' // simple redirect
     } catch (error) {
       setErrors({ general: 'Registration failed. Please try again.' })
-    } finally {
       setIsLoading(false)
     }
   }
@@ -91,6 +116,7 @@ export const Register: React.FC = () => {
           </div>
         </div>
 
+        {/* Registration Card */}
         <Card>
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-semibold text-center">Create Account</CardTitle>
@@ -100,41 +126,57 @@ export const Register: React.FC = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+
+              {/* General Error */}
               {errors.general && (
                 <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
                   {errors.general}
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    placeholder="John"
-                    value={formData.firstName}
-                    onChange={handleChange('firstName')}
-                    className={errors.firstName ? 'border-destructive' : ''}
-                  />
-                  {errors.firstName && (
-                    <p className="text-sm text-destructive">{errors.firstName}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    placeholder="Doe"
-                    value={formData.lastName}
-                    onChange={handleChange('lastName')}
-                    className={errors.lastName ? 'border-destructive' : ''}
-                  />
-                  {errors.lastName && (
-                    <p className="text-sm text-destructive">{errors.lastName}</p>
-                  )}
-                </div>
+              {/* Name Field */}
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  placeholder="John Doe"
+                  value={formData.name}
+                  onChange={handleChange('name')}
+                  className={errors.name ? 'border-destructive' : ''}
+                />
+                {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
               </div>
 
+              {/* Role Field */}
+              <div className="space-y-2">
+                <Label htmlFor="role">Role</Label>
+                <select
+                  id="role"
+                  value={formData.role}
+                  onChange={handleChange('role')}
+                  className={`w-full rounded-md border px-3 py-2 text-sm ${errors.role ? 'border-destructive' : ''}`}
+                >
+                  {ROLE_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                {errors.role && <p className="text-sm text-destructive">{errors.role}</p>}
+              </div>
+
+              {/* Wallet Address Field */}
+              <div className="space-y-2">
+                <Label htmlFor="wallet_address">Wallet Address</Label>
+                <Input
+                  id="wallet_address"
+                  placeholder="0x1234..."
+                  value={formData.wallet_address}
+                  onChange={handleChange('wallet_address')}
+                  className={errors.wallet_address ? 'border-destructive' : ''}
+                />
+                {errors.wallet_address && <p className="text-sm text-destructive">{errors.wallet_address}</p>}
+              </div>
+
+              {/* Email Field */}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -145,11 +187,10 @@ export const Register: React.FC = () => {
                   onChange={handleChange('email')}
                   className={errors.email ? 'border-destructive' : ''}
                 />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
-                )}
+                {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
               </div>
 
+              {/* Password Field */}
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -160,11 +201,10 @@ export const Register: React.FC = () => {
                   onChange={handleChange('password')}
                   className={errors.password ? 'border-destructive' : ''}
                 />
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
+                {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
               </div>
 
+              {/* Confirm Password Field */}
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input
@@ -175,16 +215,16 @@ export const Register: React.FC = () => {
                   onChange={handleChange('confirmPassword')}
                   className={errors.confirmPassword ? 'border-destructive' : ''}
                 />
-                {errors.confirmPassword && (
-                  <p className="text-sm text-destructive">{errors.confirmPassword}</p>
-                )}
+                {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword}</p>}
               </div>
 
+              {/* Submit Button */}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Creating account...' : 'Create Account'}
               </Button>
             </form>
 
+            {/* Link to Login */}
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
                 Already have an account?{' '}

@@ -1,5 +1,5 @@
-// src/services/ApiService.ts?
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios"
+// src/services/api.ts
+import axios, { AxiosInstance, AxiosRequestConfig } from "axios"
 import { tokenStorage } from "../utils/token"
 
 class ApiService {
@@ -13,17 +13,19 @@ class ApiService {
       },
     })
 
-    // Request interceptor → attach token
+    // ---------- Request Interceptor ----------
     this.api.interceptors.request.use((config: AxiosRequestConfig) => {
-      const token = tokenStorage.getAccessToken()
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`
+      const token = tokenStorage.get()
+      if (token) {
+        // Fix TypeScript error by casting headers to 'any'
+        if (!config.headers) config.headers = {} as any
+        (config.headers as any).Authorization = `Bearer ${token}`
       }
       return config
     })
   }
 
-  // Example GET request
+  // ---------- HTTP Methods ----------
   get<T = any>(url: string, config?: AxiosRequestConfig) {
     return this.api.get<T>(url, config)
   }
