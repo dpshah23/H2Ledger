@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react'
 import { DashboardStats } from '../components/DashboardStats'
 import { MarketChart } from '../components/MarketChart'
 import { TransactionTable } from '../components/TransactionTable'
-import { DashboardAnalytics, Transaction, dashboardService } from '../services/dashboard'
+import { dashboardService, DashboardAnalytics, Transaction } from '../services/dashboard'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
+import { useTotalCreditsOwned } from '../hooks/useTotalCreditsOwned'
 
 
 // Mock data for demonstration
@@ -66,32 +67,35 @@ const mockTransactions: Transaction[] = [
 ]
 
 export const Dashboard: React.FC = () => {
-  const [analytics, setAnalytics] = useState<DashboardAnalytics>(mockAnalytics)
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions)
+  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const totalCreditsOwned = useTotalCreditsOwned(); // <-- get real value
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       setIsLoading(true)
       try {
-        // Replace with actual API calls when backend is ready
-        // const [analyticsData, transactionsData] = await Promise.all([
-        //   dashboardService.getAnalytics(),
-        //   dashboardService.getTransactions(10)
-        // ])
+        // You can still fetch other analytics from your API if needed
+        // const analyticsData = await dashboardService.getAnalytics()
         // setAnalytics(analyticsData)
+        // const transactionsData = await dashboardService.getTransactions(10)
         // setTransactions(transactionsData)
       } catch (error) {
-        console.error('Failed to fetch dashboard data:', error)
+        // handle error
       } finally {
         setIsLoading(false)
       }
     }
-
     fetchDashboardData()
   }, [])
 
-  if (isLoading) {
+  // If you want to keep using your API for other analytics, merge the real value in:
+  const analyticsWithRealCredits = analytics
+    ? { ...analytics, totalCreditsOwned }
+    : null;
+
+  if (isLoading || !analyticsWithRealCredits) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -109,12 +113,12 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Analytics Overview */}
-      <DashboardStats analytics={analytics} />
+      <DashboardStats analytics={analyticsWithRealCredits} />
 
       {/* Market Chart and Activity */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <MarketChart analytics={analytics} />
+          <MarketChart analytics={analyticsWithRealCredits} />
         </div>
         <div className="space-y-6">
           <Card>

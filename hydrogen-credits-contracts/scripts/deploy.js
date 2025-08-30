@@ -1,21 +1,17 @@
-import hre from "hardhat";
+import { ethers } from "hardhat";
 
 async function main() {
-  // Get deployer account
-  const [deployer] = await hre.ethers.getSigners();
-  console.log("Deploying contract with account:", deployer.address);
+  const HydrogenCredits = await ethers.getContractFactory("HydrogenCredits");
 
-  // Deploy the contract
-  const HydrogenCredits = await hre.ethers.getContractFactory("HydrogenCredits");
-  const contract = await HydrogenCredits.deploy(deployer.address); // pass owner
+  // Deploy with constructor arguments: name, symbol, initial supply
+  const contract = await HydrogenCredits.deploy("HydroToken", "HGC", 1000000);
 
-  // Wait until the contract is deployed
+  // Wait for deployment
   await contract.waitForDeployment();
 
-  console.log("HydrogenCredits deployed to:", await contract.getAddress());
+  console.log("HydrogenCredits deployed to:", contract.target);
 }
 
-// Run the script and handle errors
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
