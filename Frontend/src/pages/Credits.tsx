@@ -1,9 +1,23 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { CreditCard } from '../components/CreditCard'
-import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
-import { Search, Filter } from 'lucide-react'
-import { CreditToken, creditsService } from '../services/credits'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { 
+  Search, 
+  Wallet, 
+  Award,
+  Leaf,
+  DollarSign
+} from 'lucide-react'
+import { CreditToken } from '../services/credits'
+import { toast } from 'sonner'
+
+interface AuditStats {
+  totalCredits: number
+  totalValue: number
+  verifiedCredits: number
+  co2Offset: number
+}
 
 // Mock data for demonstration
 const mockCredits: CreditToken[] = [
@@ -64,49 +78,55 @@ const mockCredits: CreditToken[] = [
 ]
 
 export const Credits: React.FC = () => {
-  const [credits, setCredits] = useState<CreditToken[]>(mockCredits)
+  const [credits] = useState<CreditToken[]>(mockCredits)
   const [searchTerm, setSearchTerm] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [stats, setStats] = useState<AuditStats>({
+    totalCredits: 0,
+    totalValue: 0,
+    verifiedCredits: 0,
+    co2Offset: 0
+  })
+
+  const fetchCredits = useCallback(async () => {
+    try {
+      // For now, use mock data. In production, uncomment the API call below:
+      // const response = await creditsService.getCredits()
+      // setCredits(response)
+      
+      // Calculate stats from mock data
+      const totalCredits = credits.reduce((sum: number, credit: CreditToken) => sum + credit.quantity, 0)
+      const totalValue = credits.reduce((sum: number, credit: CreditToken) => sum + credit.totalValue, 0)
+      const verifiedCredits = credits.filter((credit: CreditToken) => credit.verified).length
+      const co2Offset = credits.reduce((sum: number, credit: CreditToken) => sum + (credit.metadata?.co2Offset || 0), 0)
+      
+      setStats({ totalCredits, totalValue, verifiedCredits, co2Offset })
+    } catch (error) {
+      console.error('Failed to fetch credits:', error)
+      toast.error('Failed to load credits. Please try again.')
+    }
+  }, [credits])
 
   useEffect(() => {
-    const fetchCredits = async () => {
-      setIsLoading(true)
-      try {
-        // Replace with actual API call when backend is ready
-        // const creditsData = await creditsService.getCredits()
-        // setCredits(creditsData)
-      } catch (error) {
-        console.error('Failed to fetch credits:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
     fetchCredits()
-  }, [])
+  }, [fetchCredits])
 
-  const filteredCredits = credits.filter(credit =>
-    credit.metadata.facilityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    credit.tokenId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    credit.metadata.location.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredCredits = credits.filter(credit => {
+    const searchString = searchTerm.toLowerCase()
+    return (
+      credit.metadata?.facilityName?.toLowerCase().includes(searchString) ||
+      credit.tokenId.toLowerCase().includes(searchString) ||
+      credit.metadata?.location?.toLowerCase().includes(searchString)
+    )
+  })
 
   const handleViewDetails = (credit: CreditToken) => {
     console.log('View details for credit:', credit.id)
-    // Navigate to detail view or open modal
+    toast.info(`Viewing details for ${credit.tokenId}`)
   }
 
   const handleTransfer = (credit: CreditToken) => {
     console.log('Transfer credit:', credit.id)
-    // Open transfer modal
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    toast.info(`Transfer initiated for ${credit.tokenId}`)
   }
 
   return (
@@ -118,22 +138,75 @@ export const Credits: React.FC = () => {
         </p>
       </div>
 
-      {/* Search and Filter */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search credits by facility, token ID, or location..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Button variant="outline" className="flex items-center gap-2">
-          <Filter className="h-4 w-4" />
-          Filter
-        </Button>
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Credits</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalCredits.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              Carbon credits owned
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Portfolio Value</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${stats.totalValue.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              Total market value
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Verified Credits</CardTitle>
+            <Award className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.verifiedCredits}</div>
+            <p className="text-xs text-muted-foreground">
+              Certified and verified
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">CO₂ Offset</CardTitle>
+            <Leaf className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.co2Offset.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              Tons CO₂ equivalent
+            </p>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Search */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search credits by facility, token ID, or location..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Credits Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -148,9 +221,17 @@ export const Credits: React.FC = () => {
       </div>
 
       {filteredCredits.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No credits found matching your search.</p>
-        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-lg font-medium">No credits found</p>
+            <p className="text-muted-foreground text-center">
+              {credits.length === 0 
+                ? "You don't have any credits yet. Start by purchasing some credits."
+                : "No credits match your current search criteria."
+              }
+            </p>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

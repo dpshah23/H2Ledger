@@ -1,22 +1,335 @@
 from django.shortcuts import render
-
-# Create your views here.
-
-#verify green h2 done from verifier 
-#mint generation 
-#tranfer -> store in db -> hash ("tx_id","credit_id",# "credit_info","from_user_id","from_user_name","to_user_id","to_user_name","tx_type","amount","fiat_value_usd","tx_hash","timestamp",)
-#Use -> store 
-import hashlib , time
-from django.utils.timezone import now , timedelta
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
+from django.db.models import Sum, Count, Q, Avg
+from django.utils.timezone import now, timedelta
+from datetime import datetime, date
+import hashlib
+import time
+import json
+from decimal import Decimal
+
 from .models import *
 from .serializers import *
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from django.db.models import Sum, Count
+from auth1.models import User1
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def health_check(request):
+    """API health check endpoint"""
+    return Response({
+        'status': 'healthy',
+        'timestamp': now().isoformat(),
+        'version': '1.0.0'
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_analytics(request):
+    """
+    Enhanced dashboard analytics with comprehensive data
+    """
+    try:
+        user = request.user if hasattr(request, 'user') else None
+        
+        # Get user's total credits
+        total_credits = Credit.objects.filter(
+            owner=user, 
+            status="active"
+        ).aggregate(total=Sum("amount"))["total"] or 0
+
+        # Calculate trading stats
+        today = now().date()
+        week_start = today - timedelta(days=7)
+        
+        credits_traded_today = Transaction.objects.filter(
+            Q(from_user=user) | Q(to_user=user),
+            tx_type__in=["transfer", "purchase"],
+            timestamp__date=today
+        ).aggregate(total=Sum("amount"))["total"] or 0
+
+        credits_traded_week = Transaction.objects.filter(
+            Q(from_user=user) | Q(to_user=user),
+            tx_type__in=["transfer", "purchase"],
+            timestamp__date__gte=week_start
+        ).aggregate(total=Sum("amount"))["total"] or 0
+
+        # Market price calculation
+        recent_transactions = Transaction.objects.filter(
+            tx_type__in=["transfer", "purchase"],
+            fiat_value_usd__isnull=False,
+            amount__gt=0
+        ).order_by("-timestamp")[:50]
+
+        if recent_transactions.exists():
+            prices = []
+            for tx in recent_transactions:
+                if tx.amount and tx.fiat_value_usd:
+                    price_per_credit = float(tx.fiat_value_usd) / float(tx.amount)
+                    prices.append(price_per_credit)
+            
+            current_price = sum(prices) / len(prices) if prices else 50.0
+            
+            # Calculate 24h change (simplified)
+            yesterday_prices = []
+            yesterday = today - timedelta(days=1)
+            yesterday_tx = Transaction.objects.filter(
+                tx_type__in=["transfer", "purchase"],
+                timestamp__date=yesterday,
+                fiat_value_usd__isnull=False,
+                amount__gt=0
+            )
+            
+            for tx in yesterday_tx:
+                if tx.amount and tx.fiat_value_usd:
+                    price = float(tx.fiat_value_usd) / float(tx.amount)
+                    yesterday_prices.append(price)
+            
+            yesterday_avg = sum(yesterday_prices) / len(yesterday_prices) if yesterday_prices else current_price
+            change_24h = ((current_price - yesterday_avg) / yesterday_avg * 100) if yesterday_avg > 0 else 0
+        else:
+            current_price = 50.0  # Default price
+            change_24h = 0
+
+        # Emissions offset calculation
+        emissions_offset_total = Transaction.objects.filter(
+            from_user=user,
+            tx_type="burn"
+        ).aggregate(total=Sum("amount"))["total"] or 0
+
+        # Convert credits to emissions offset (assuming 1 credit = 10 kg CO2 offset)
+        emissions_kg = float(emissions_offset_total) * 10 if emissions_offset_total else 0
+        
+        # Monthly progress
+        month_start = today.replace(day=1)
+        monthly_offset = Transaction.objects.filter(
+            from_user=user,
+            tx_type="burn",
+            timestamp__date__gte=month_start
+        ).aggregate(total=Sum("amount"))["total"] or 0
+        
+        monthly_offset_kg = float(monthly_offset) * 10 if monthly_offset else 0
+        monthly_target = 1000  # 1000 kg CO2 offset per month target
+        
+        # Market price trend (last 7 days)
+        trend = []
+        for i in range(6, -1, -1):
+            trend_date = today - timedelta(days=i)
+            day_transactions = Transaction.objects.filter(
+                tx_type__in=["transfer", "purchase"],
+                timestamp__date=trend_date,
+                fiat_value_usd__isnull=False,
+                amount__gt=0
+            )
+            
+            if day_transactions.exists():
+                day_prices = []
+                for tx in day_transactions:
+                    if tx.amount and tx.fiat_value_usd:
+                        price = float(tx.fiat_value_usd) / float(tx.amount)
+                        day_prices.append(price)
+                day_avg = sum(day_prices) / len(day_prices) if day_prices else current_price
+            else:
+                day_avg = current_price
+            
+            trend.append({
+                "date": trend_date.strftime("%Y-%m-%d"),
+                "price": round(day_avg, 2)
+            })
+
+        return Response({
+            "totalCreditsOwned": float(total_credits),
+            "creditsTraded": {
+                "today": float(credits_traded_today),
+                "thisWeek": float(credits_traded_week)
+            },
+            "marketPrice": {
+                "current": round(current_price, 2),
+                "change24h": round(change_24h, 2)
+            },
+            "emissionsOffset": {
+                "total": round(emissions_kg, 2),
+                "thisMonth": round(monthly_offset_kg, 2),
+                "target": monthly_target
+            },
+            "marketPrice": {
+                "current": round(current_price, 2),
+                "change24h": round(change_24h, 2),
+                "trend": trend
+            }
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            "error": str(e),
+            "totalCreditsOwned": 0,
+            "creditsTraded": {"today": 0, "thisWeek": 0},
+            "marketPrice": {"current": 50.0, "change24h": 0},
+            "emissionsOffset": {"total": 0, "thisMonth": 0, "target": 1000}
+        }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])  
+def dashboard_transactions(request):
+    """
+    Get recent transactions for dashboard
+    """
+    try:
+        user = request.user if hasattr(request, 'user') else None
+        limit = int(request.GET.get('limit', 10))
+        
+        # Get user's recent transactions
+        transactions = Transaction.objects.filter(
+            Q(from_user=user) | Q(to_user=user)
+        ).order_by('-timestamp')[:limit]
+        
+        transaction_data = []
+        for tx in transactions:
+            # Determine transaction type from user perspective
+            if tx.from_user == user:
+                tx_type = 'sell' if tx.tx_type == 'transfer' else tx.tx_type
+                counterparty = tx.to_user.name if tx.to_user else 'System'
+            else:
+                tx_type = 'buy' if tx.tx_type == 'transfer' else tx.tx_type
+                counterparty = tx.from_user.name if tx.from_user else 'System'
+            
+            transaction_data.append({
+                'id': str(tx.tx_id),
+                'type': tx_type,
+                'creditId': str(tx.credit.credit_id),
+                'quantity': float(tx.amount),
+                'price': float(tx.fiat_value_usd) if tx.fiat_value_usd else 0,
+                'counterparty': counterparty,
+                'timestamp': tx.timestamp.isoformat(),
+                'status': 'completed'  # Assuming all DB transactions are completed
+            })
+        
+        return Response(transaction_data, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_credits(request):
+    """
+    List user's credits with filtering and pagination
+    """
+    try:
+        user = request.user if hasattr(request, 'user') else None
+        
+        # Get query parameters
+        status_filter = request.GET.get('status', 'active')
+        page = int(request.GET.get('page', 1))
+        limit = int(request.GET.get('limit', 20))
+        
+        # Calculate offset
+        offset = (page - 1) * limit
+        
+        # Filter credits
+        credits_query = Credit.objects.filter(owner=user)
+        if status_filter != 'all':
+            credits_query = credits_query.filter(status=status_filter)
+        
+        # Get total count
+        total_count = credits_query.count()
+        
+        # Get paginated results
+        credits = credits_query.order_by('-created_at')[offset:offset + limit]
+        
+        # Serialize data
+        credits_data = []
+        for credit in credits:
+            credits_data.append({
+                'id': credit.credit_id,
+                'batchId': credit.batch.batch_id,
+                'amount': float(credit.amount),
+                'status': credit.status,
+                'txHash': credit.tx_hash,
+                'createdAt': credit.created_at.isoformat(),
+                'batch': {
+                    'producer': credit.batch.producer.name,
+                    'productionDate': credit.batch.production_date.isoformat(),
+                    'quantityKg': float(credit.batch.quantity_kg)
+                }
+            })
+        
+        return Response({
+            'credits': credits_data,
+            'pagination': {
+                'page': page,
+                'limit': limit,
+                'total': total_count,
+                'pages': (total_count + limit - 1) // limit
+            }
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def credit_detail(request, credit_id):
+    """
+    Get detailed information about a specific credit
+    """
+    try:
+        user = request.user if hasattr(request, 'user') else None
+        
+        credit = Credit.objects.get(credit_id=credit_id, owner=user)
+        
+        # Get transaction history for this credit
+        transactions = Transaction.objects.filter(credit=credit).order_by('-timestamp')
+        
+        transaction_history = []
+        for tx in transactions:
+            transaction_history.append({
+                'id': tx.tx_id,
+                'type': tx.tx_type,
+                'amount': float(tx.amount),
+                'fromUser': tx.from_user.name if tx.from_user else None,
+                'toUser': tx.to_user.name if tx.to_user else None,
+                'fiatValue': float(tx.fiat_value_usd) if tx.fiat_value_usd else None,
+                'txHash': tx.tx_hash,
+                'timestamp': tx.timestamp.isoformat()
+            })
+        
+        credit_data = {
+            'id': credit.credit_id,
+            'batchId': credit.batch.batch_id,
+            'amount': float(credit.amount),
+            'status': credit.status,
+            'txHash': credit.tx_hash,
+            'createdAt': credit.created_at.isoformat(),
+            'batch': {
+                'id': credit.batch.batch_id,
+                'producer': credit.batch.producer.name,
+                'producerEmail': credit.batch.producer.email,
+                'quantityKg': float(credit.batch.quantity_kg),
+                'productionDate': credit.batch.production_date.isoformat(),
+                'certification': credit.batch.certification,
+                'isApproved': credit.batch.is_approved,
+                'createdAt': credit.batch.created_at.isoformat()
+            },
+            'transactions': transaction_history
+        }
+        
+        return Response(credit_data, status=status.HTTP_200_OK)
+        
+    except Credit.DoesNotExist:
+        return Response({"error": "Credit not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def create_hydrogen_batch(request):
 
     try:
@@ -35,6 +348,7 @@ def create_hydrogen_batch(request):
 
 
 @api_view(["GET"])
+@permission_classes([AllowAny])
 def list_hydrogen_batches(request):
 
     try:

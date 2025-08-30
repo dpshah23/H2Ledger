@@ -1,4 +1,3 @@
-import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -6,9 +5,10 @@ import { MainLayout } from './layouts/MainLayout'
 import { ProtectedRoute } from './layouts/ProtectedRoute'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
-import { Dashboard } from './pages/Dashboard'
+import Dashboard from './pages/Dashboard'
 import { Credits } from './pages/Credits'
 import { Audit } from './pages/Audit'
+import { Toaster } from 'sonner'
 
 function App() {
   return (
@@ -39,6 +39,7 @@ function App() {
             {/* Catch all */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
+          <Toaster position="top-right" />
         </Router>
       </AuthProvider>
     </ThemeProvider>

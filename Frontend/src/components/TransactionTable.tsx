@@ -3,9 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Badge } from './ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table'
 import { ArrowUpRight, ArrowDownRight, ArrowLeftRight } from 'lucide-react'
-import { Transaction } from '../services/dashboard'
-// import { formatCurrency, formatDate } from '../lib/utils'
 import { formatCurrency, formatDate, formatNumber } from "../lib/utils"
+
+export interface Transaction {
+  id: string;
+  type: 'buy' | 'sell' | 'transfer';
+  creditId: string;
+  quantity: number;
+  price: number;
+  counterparty: string;
+  timestamp: string;
+  status: 'completed' | 'pending' | 'failed';
+}
 
 
 interface TransactionTableProps {

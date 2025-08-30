@@ -6,10 +6,10 @@ export const BRAND = {
 
 export const API_ENDPOINTS = {
   auth: {
-    login: '/auth/login/',
-    register: '/auth/signup/',
-    logout: '/auth/logout/',
-    refresh: '/auth/refresh/',
+    login: '/auth1/login/',
+    register: '/auth1/register/',
+    logout: '/auth1/logout/',
+    refresh: '/auth1/refresh/',
   },
   credits: {
     list: '/api/credits/',
@@ -19,6 +19,17 @@ export const API_ENDPOINTS = {
   dashboard: {
     analytics: '/api/dashboard/analytics/',
     transactions: '/api/dashboard/transactions/',
+  },
+  api: {
+    transfer: '/api/transfer/',
+    mint: '/api/mint/',
+    use: '/api/use/',
+    health: '/api/health/',
+  },
+  batch: {
+    create: '/api/batch/create/',
+    list: '/api/batch/list/',
+    verify: '/api/batch/',
   },
   audit: {
     transactions: '/api/audit/transactions/',

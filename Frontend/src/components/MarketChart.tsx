@@ -1,13 +1,17 @@
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { DashboardAnalytics } from '../services/dashboard'
 
-interface MarketChartProps {
-  analytics: DashboardAnalytics
+interface PricePoint {
+  date: string;
+  price: number;
 }
 
-export const MarketChart: React.FC<MarketChartProps> = ({ analytics }) => {
+interface MarketChartProps {
+  data: PricePoint[];
+}
+
+export const MarketChart: React.FC<MarketChartProps> = ({ data }) => {
   return (
     <Card>
       <CardHeader>
@@ -16,7 +20,7 @@ export const MarketChart: React.FC<MarketChartProps> = ({ analytics }) => {
       <CardContent>
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={analytics.marketPrice.trend}>
+            <LineChart data={data}>
               <CartesianGrid 
                 strokeDasharray="3 3" 
                 className="stroke-border"

@@ -1,9 +1,28 @@
 from django.urls import path
 from .views import *
+
 urlpatterns = [
+    # Health check
+    path("health/", health_check, name="health_check"),
+    
+    # Dashboard endpoints
+    path("dashboard/analytics/", dashboard_analytics, name="dashboard_analytics"),
+    path("dashboard/transactions/", dashboard_transactions, name="dashboard_transactions"),
+    
+    # Legacy dashboard endpoint (for backwards compatibility)
+    path("dashboard/", dashboard_view, name="dashboard_view"),
+    
+    # Credit operations
     path("transfer/", transfer_credit, name="transfer_credit"),
     path("mint/", mint_credit, name="mint_credit"),
-    path("batch/", verify_batch, name="verify_batch"),
     path("use/", use_credit, name="use_credit"),
-    path("dashboard/", dashboard_view, name="dashboard_view"),
+    
+    # Batch operations
+    path("batch/", verify_batch, name="verify_batch"),
+    path("batch/create/", create_hydrogen_batch, name="create_hydrogen_batch"),
+    path("batch/list/", list_hydrogen_batches, name="list_hydrogen_batches"),
+    
+    # Credits endpoints
+    path("credits/", list_credits, name="list_credits"),
+    path("credits/<int:credit_id>/", credit_detail, name="credit_detail"),
 ]

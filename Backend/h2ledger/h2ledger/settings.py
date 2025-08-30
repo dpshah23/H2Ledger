@@ -82,7 +82,6 @@ SIMPLE_JWT = {
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.common.CommonMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -95,6 +94,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'h2ledger.urls'
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = True  # Temporarily set to True for debugging
 
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = [
@@ -102,6 +102,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
     "http://localhost:8080",
     "http://127.0.0.1:8080",
     "http://localhost:8081",
@@ -110,10 +112,33 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_HEADERS = [
-    "content-type",
+    "accept",
+    "accept-encoding",
     "authorization",
-    # add any others you use
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Additional CORS settings for preflight
+CORS_PREFLIGHT_MAX_AGE = 86400
+
+# Blockchain Configuration
+BLOCKCHAIN_RPC_URL = 'http://localhost:8545'  # Local Hardhat/Ganache
+CONTRACT_ADDRESS = None  # Set this when contract is deployed
+BLOCKCHAIN_PRIVATE_KEY = None  # Set via environment variable
 
 
 TEMPLATES = [
@@ -147,20 +172,29 @@ WSGI_APPLICATION = 'h2ledger.wsgi.application'
 
 import os
 
-from dotenv import load_dotenv
-load_dotenv()  # take environment variables from .env.
+# Load environment variables (optional for development)
+# from dotenv import load_dotenv
+# load_dotenv()  # take environment variables from .env.
 
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'defaultdb',      # Replace with your database name
-        'USER': 'avnadmin',      # Replace with your database user
-        'PASSWORD': os.getenv('PASSWORD'),  # Replace with your database password
-        'HOST': os.getenv('HOST'),               # Or the IP address of your MySQL server
-        'PORT': os.getenv('PORT'),                    # The default MySQL port
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# Production PostgreSQL database configuration (commented out for development)
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'defaultdb',      # Replace with your database name
+#         'USER': 'avnadmin',      # Replace with your database user
+#         'PASSWORD': os.getenv('PASSWORD'),  # Replace with your database password
+#         'HOST': os.getenv('HOST'),               # Or the IP address of your MySQL server
+#         'PORT': os.getenv('PORT'),                    # The default MySQL port
+#     }
+# }
 
 
 # Password validation
@@ -203,3 +237,16 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Blockchain Configuration
+BLOCKCHAIN_SETTINGS = {
+    'NETWORK_URL': 'http://127.0.0.1:8545',  # Local Hardhat network
+    'CHAIN_ID': 31337,  # Hardhat chain ID
+    'CONTRACT_ADDRESS': '0x5FbDB2315678afecb367f032d93F642f64180aa3',  # Default Hardhat deployment address
+    'PRIVATE_KEY': '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',  # Default Hardhat account
+    'GAS_LIMIT': 3000000,
+    'GAS_PRICE': 20000000000,  # 20 gwei
+}
+
+# Contract ABI Path
+CONTRACT_ABI_PATH = BASE_DIR.parent.parent / 'hydrogen-credits-contracts' / 'artifacts' / 'contracts' / 'HydrogenCredits.sol' / 'HydrogenCredits.json'

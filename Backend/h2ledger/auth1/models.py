@@ -5,6 +5,7 @@ from django.contrib.auth.hashers import check_password as django_check_password
 class User1(models.Model):
     ROLE_CHOICES = (
         ('producer', 'Producer'),
+        ('consumer', 'Consumer'),
         ('buyer', 'Buyer'),
         ('regulator', 'Regulator'),
         ('verifier', 'Verifier')
