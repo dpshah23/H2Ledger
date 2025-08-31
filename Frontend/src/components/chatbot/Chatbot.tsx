@@ -52,7 +52,7 @@ const Chatbot: React.FC = () => {
             key={idx}
             className={`p-2 rounded-lg max-w-[80%] ${
               msg.sender === "user"
-                ? "bg-blue-500 text-white self-end ml-auto"
+                ? "bg-green-500 text-white self-end ml-auto"
                 : "bg-gray-200 text-gray-800 self-start"
             }`}
           >
@@ -76,7 +76,7 @@ const Chatbot: React.FC = () => {
         />
         <button
           onClick={sendMessage}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+          className="bg-green-500 text-white px-4 py-2 rounded-lg disabled:opacity-50"
           disabled={loading}
         >
           Send
