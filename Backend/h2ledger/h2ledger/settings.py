@@ -47,6 +47,8 @@ INSTALLED_APPS = [
 # Rest framework and JWT Settings
 from datetime import timedelta
 
+# Rest framework 
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -195,6 +197,7 @@ DATABASES = {
 #         'PORT': os.getenv('PORT'),                    # The default MySQL port
 #     }
 # }
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 
 # Password validation
