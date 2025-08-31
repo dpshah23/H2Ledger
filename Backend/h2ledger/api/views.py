@@ -11,9 +11,40 @@ import time
 import json
 from decimal import Decimal
 
+
 from .models import *
 from .serializers import *
 from auth1.models import User1
+
+
+# Leaderboard endpoint: users ranked by total hydrogen credits used (burned), grouped by email
+from django.db.models import Sum
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework import status
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def hydrogen_leaderboard(request):
+    """
+    Returns a leaderboard of users ranked by total hydrogen credits used (burned), grouped by email address.
+    """
+    leaderboard = (
+        Transaction.objects.filter(tx_type="burn")
+        .values("from_user__email")
+        .annotate(total_hydrogen_used=Sum("amount"))
+        .order_by("-total_hydrogen_used")
+    )
+    # Format for frontend
+    leaderboard_list = [
+        {
+            "email": entry["from_user__email"],
+            "total_hydrogen_used": float(entry["total_hydrogen_used"] or 0),
+        }
+        for entry in leaderboard if entry["from_user__email"]
+    ]
+    return Response({"leaderboard": leaderboard_list}, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])
