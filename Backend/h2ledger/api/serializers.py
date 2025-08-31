@@ -2,6 +2,36 @@ from rest_framework import serializers
 from .models import *
 
 
+class MarketPriceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MarketPrice
+        fields = ['price_per_credit', 'volume_24h', 'timestamp']
+        read_only_fields = ['timestamp']
+
+
+class EmissionsDataSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source="user.name", read_only=True)
+    
+    class Meta:
+        model = EmissionsData
+        fields = ['user', 'user_name', 'credits_burned', 'co2_offset_kg', 'timestamp']
+        read_only_fields = ['timestamp', 'user_name']
+
+
+class TradingOrderSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source="user.name", read_only=True)
+    batch_producer = serializers.CharField(source="credit_batch.producer.name", read_only=True)
+    
+    class Meta:
+        model = TradingOrder
+        fields = [
+            'id', 'user', 'user_name', 'order_type', 'credit_batch', 'batch_producer',
+            'quantity', 'price_per_credit', 'filled_quantity', 'status', 
+            'created_at', 'expires_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'user_name', 'batch_producer']
+
+
 class HydrogenBatchSerializer(serializers.ModelSerializer):
     producer_name = serializers.CharField(source="producer.name", read_only=True)
     producer_id = serializers.IntegerField(write_only=True)

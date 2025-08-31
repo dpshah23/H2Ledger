@@ -9,6 +9,14 @@ urlpatterns = [
     path("dashboard/analytics/", dashboard_analytics, name="dashboard_analytics"),
     path("dashboard/transactions/", dashboard_transactions, name="dashboard_transactions"),
     
+    # Market data endpoints
+    path("market/data/", market_data, name="market_data"),
+    path("market/price/", market_data, name="market_price"),  # Alias for compatibility
+    
+    # Trading endpoints
+    path("trading/orders/", trading_orders, name="trading_orders"),
+    path("trading/burn/", burn_credits, name="burn_credits"),
+    
     # Legacy dashboard endpoint (for backwards compatibility)
     path("dashboard/", dashboard_view, name="dashboard_view"),
     

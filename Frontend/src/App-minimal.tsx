@@ -1,14 +1,29 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
-import { MainLayout } from './layouts/MainLayout'
-import { ProtectedRoute } from './layouts/ProtectedRoute'
+import { AuthProvider } from './context/AuthContext'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
+import { MainLayout } from './layouts/MainLayout'
+import { ProtectedRoute } from './layouts/ProtectedRoute'
 import Dashboard from './pages/Dashboard'
 import CreditsFixed from './pages/Credits-fixed'
 import { Audit } from './pages/Audit'
-import { Toaster } from 'sonner'
+
+function TestPage() {
+  return (
+    <div style={{ padding: '20px' }}>
+      <h1>H2Ledger - Testing All Pages</h1>
+      <p>Testing all main components</p>
+      <div style={{ marginTop: '10px' }}>
+        <a href="/login" style={{ color: 'blue', marginRight: '20px' }}>Go to Login Page</a>
+        <a href="/register" style={{ color: 'blue', marginRight: '20px' }}>Go to Register Page</a>
+        <a href="/dashboard" style={{ color: 'blue', marginRight: '20px' }}>Go to Dashboard</a>
+        <a href="/credits" style={{ color: 'blue', marginRight: '20px' }}>Go to Credits</a>
+        <a href="/audit" style={{ color: 'blue' }}>Go to Audit</a>
+      </div>
+    </div>
+  )
+}
 
 function App() {
   return (
@@ -36,10 +51,12 @@ function App() {
               } />
             </Route>
 
+            {/* Test page */}
+            <Route path="/test" element={<TestPage />} />
+            
             {/* Catch all */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
-          <Toaster position="top-right" />
         </Router>
       </AuthProvider>
     </ThemeProvider>

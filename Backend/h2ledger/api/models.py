@@ -1,6 +1,57 @@
 #make_password
 from django.db import models
-from auth1.models import User1  
+from auth1.models import User1
+from decimal import Decimal
+from django.utils import timezone
+
+class MarketPrice(models.Model):
+    """Track market prices over time"""
+    price_per_credit = models.DecimalField(max_digits=10, decimal_places=2)
+    volume_24h = models.DecimalField(max_digits=15, decimal_places=3, default=0)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-timestamp']
+    
+    def __str__(self):
+        return f"${self.price_per_credit} at {self.timestamp}"
+
+class EmissionsData(models.Model):
+    """Track emissions offset data"""
+    user = models.ForeignKey(User1, on_delete=models.CASCADE, related_name="emissions_data")
+    credits_burned = models.DecimalField(max_digits=12, decimal_places=3)
+    co2_offset_kg = models.DecimalField(max_digits=12, decimal_places=2)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.user.name} - {self.co2_offset_kg}kg CO2 offset"
+
+class TradingOrder(models.Model):
+    """Trading orders for credits"""
+    ORDER_TYPES = (
+        ('buy', 'Buy'),
+        ('sell', 'Sell'),
+    )
+    
+    ORDER_STATUS = (
+        ('pending', 'Pending'),
+        ('partial', 'Partial'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    )
+    
+    user = models.ForeignKey(User1, on_delete=models.CASCADE, related_name="trading_orders")
+    order_type = models.CharField(max_length=10, choices=ORDER_TYPES)
+    credit_batch = models.ForeignKey('HydrogenBatch', on_delete=models.CASCADE, null=True, blank=True)
+    quantity = models.DecimalField(max_digits=12, decimal_places=3)
+    price_per_credit = models.DecimalField(max_digits=10, decimal_places=2)
+    filled_quantity = models.DecimalField(max_digits=12, decimal_places=3, default=0)
+    status = models.CharField(max_length=20, choices=ORDER_STATUS, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"{self.order_type.upper()} {self.quantity} credits @ ${self.price_per_credit}"
 
 class HydrogenBatch(models.Model):
     batch_id = models.AutoField(primary_key=True)

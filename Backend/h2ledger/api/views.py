@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
-from django.db.models import Sum, Count, Q, Avg
+from django.db.models import Sum, Count, Q, Avg, Max, Min
 from django.utils.timezone import now, timedelta
 from datetime import datetime, date
 import hashlib
@@ -29,9 +29,265 @@ def health_check(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def market_data(request):
+    """
+    Get current market data including price, volume, and trends
+    """
+    try:
+        # Get latest market price
+        latest_price = MarketPrice.objects.first()
+        
+        if not latest_price:
+            # Create default market price if none exists
+            latest_price = MarketPrice.objects.create(
+                price_per_credit=Decimal('50.00'),
+                volume_24h=Decimal('0')
+            )
+        
+        # Get 24h volume from transactions
+        yesterday = now() - timedelta(days=1)
+        volume_24h = Transaction.objects.filter(
+            timestamp__gte=yesterday,
+            tx_type__in=['transfer', 'purchase'],
+            fiat_value_usd__isnull=False
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        # Get price trend for last 7 days
+        trend_data = []
+        for i in range(6, -1, -1):
+            trend_date = now().date() - timedelta(days=i)
+            day_start = datetime.combine(trend_date, datetime.min.time())
+            day_end = datetime.combine(trend_date, datetime.max.time())
+            
+            # Get average price for that day
+            day_transactions = Transaction.objects.filter(
+                timestamp__range=[day_start, day_end],
+                tx_type__in=['transfer', 'purchase'],
+                fiat_value_usd__isnull=False,
+                amount__gt=0
+            )
+            
+            if day_transactions.exists():
+                day_prices = []
+                for tx in day_transactions:
+                    if tx.amount and tx.fiat_value_usd:
+                        price = float(tx.fiat_value_usd) / float(tx.amount)
+                        day_prices.append(price)
+                day_avg = sum(day_prices) / len(day_prices) if day_prices else float(latest_price.price_per_credit)
+            else:
+                day_avg = float(latest_price.price_per_credit)
+            
+            trend_data.append({
+                'date': trend_date.strftime('%Y-%m-%d'),
+                'price': round(day_avg, 2)
+            })
+        
+        # Calculate 24h change
+        if len(trend_data) >= 2:
+            current_price = trend_data[-1]['price']
+            yesterday_price = trend_data[-2]['price']
+            change_24h = ((current_price - yesterday_price) / yesterday_price * 100) if yesterday_price > 0 else 0
+        else:
+            change_24h = 0
+        
+        return Response({
+            'current_price': float(latest_price.price_per_credit),
+            'volume_24h': float(volume_24h),
+            'change_24h': round(change_24h, 2),
+            'trend': trend_data
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def trading_orders(request):
+    """
+    GET: List user's trading orders
+    POST: Create new trading order
+    """
+    user = request.user if hasattr(request, 'user') else None
+    
+    if request.method == 'GET':
+        try:
+            orders = TradingOrder.objects.filter(user=user).order_by('-created_at')
+            serializer = TradingOrderSerializer(orders, many=True)
+            return Response({'orders': serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    elif request.method == 'POST':
+        try:
+            data = request.data.copy()
+            data['user'] = user.id
+            
+            serializer = TradingOrderSerializer(data=data)
+            if serializer.is_valid():
+                order = serializer.save()
+                
+                # Try to match with existing orders
+                if order.order_type == 'buy':
+                    matching_orders = TradingOrder.objects.filter(
+                        order_type='sell',
+                        price_per_credit__lte=order.price_per_credit,
+                        status='pending'
+                    ).order_by('price_per_credit', 'created_at')
+                else:
+                    matching_orders = TradingOrder.objects.filter(
+                        order_type='buy',
+                        price_per_credit__gte=order.price_per_credit,
+                        status='pending'
+                    ).order_by('-price_per_credit', 'created_at')
+                
+                # Simple order matching logic
+                for match in matching_orders:
+                    if order.quantity <= order.filled_quantity:
+                        break
+                    
+                    available_quantity = match.quantity - match.filled_quantity
+                    trade_quantity = min(order.quantity - order.filled_quantity, available_quantity)
+                    
+                    if trade_quantity > 0:
+                        # Execute trade
+                        trade_price = match.price_per_credit
+                        
+                        # Update order fill quantities
+                        order.filled_quantity += trade_quantity
+                        match.filled_quantity += trade_quantity
+                        
+                        # Update order statuses
+                        if order.filled_quantity >= order.quantity:
+                            order.status = 'completed'
+                        else:
+                            order.status = 'partial'
+                        
+                        if match.filled_quantity >= match.quantity:
+                            match.status = 'completed'
+                        else:
+                            match.status = 'partial'
+                        
+                        order.save()
+                        match.save()
+                        
+                        # Create transaction record
+                        if order.order_type == 'buy':
+                            buyer = order.user
+                            seller = match.user
+                        else:
+                            buyer = match.user
+                            seller = order.user
+                        
+                        # This would need credit transfer logic
+                        # For now, just create a transaction record
+                        Transaction.objects.create(
+                            credit_id=1,  # This should be the actual credit being traded
+                            from_user=seller,
+                            to_user=buyer,
+                            tx_type='transfer',
+                            amount=trade_quantity,
+                            fiat_value_usd=trade_quantity * trade_price,
+                            tx_hash=f"trade_{int(time.time())}_{order.id}_{match.id}"
+                        )
+                
+                return Response({
+                    'order': TradingOrderSerializer(order).data,
+                    'message': 'Order created successfully'
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def burn_credits(request):
+    """
+    Burn credits for emissions offset
+    """
+    try:
+        user = request.user if hasattr(request, 'user') else None
+        credit_ids = request.data.get('credit_ids', [])
+        
+        if not credit_ids:
+            return Response({'error': 'No credits specified'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        total_burned = 0
+        for credit_id in credit_ids:
+            try:
+                credit = Credit.objects.get(credit_id=credit_id, owner=user, status='active')
+                
+                # Mark credit as burned
+                credit.status = 'burned'
+                credit.save()
+                
+                # Create burn transaction
+                tx_hash = f"burn_{int(time.time())}_{credit_id}"
+                Transaction.objects.create(
+                    credit=credit,
+                    from_user=user,
+                    tx_type='burn',
+                    amount=credit.amount,
+                    tx_hash=tx_hash
+                )
+                
+                total_burned += float(credit.amount)
+                
+            except Credit.DoesNotExist:
+                continue
+        
+        if total_burned > 0:
+            # Calculate CO2 offset (1 credit = 10 kg CO2 offset)
+            co2_offset = total_burned * 10
+            
+            # Record emissions data
+            EmissionsData.objects.create(
+                user=user,
+                credits_burned=Decimal(str(total_burned)),
+                co2_offset_kg=Decimal(str(co2_offset))
+            )
+            
+            return Response({
+                'credits_burned': total_burned,
+                'co2_offset_kg': co2_offset,
+                'message': f'Successfully burned {total_burned} credits, offsetting {co2_offset} kg CO2'
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'No valid credits found to burn'}, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def dashboard_analytics(request):
     """
-    Enhanced dashboard analytics with comprehensive data
+    Enhanced dashboard analytics with comprehensive data using new service
+    """
+    try:
+        from .dashboard_service import dashboard_service
+        
+        user = request.user if hasattr(request, 'user') else None
+        
+        # Use the comprehensive dashboard service
+        analytics = dashboard_service.get_comprehensive_analytics(user)
+        
+        return Response(analytics, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        # Fallback to original implementation
+        return _fallback_dashboard_analytics(request)
+
+
+def _fallback_dashboard_analytics(request):
+    """
+    Fallback dashboard analytics implementation
     """
     try:
         user = request.user if hasattr(request, 'user') else None
@@ -149,17 +405,13 @@ def dashboard_analytics(request):
             },
             "marketPrice": {
                 "current": round(current_price, 2),
-                "change24h": round(change_24h, 2)
+                "change24h": round(change_24h, 2),
+                "trend": trend
             },
             "emissionsOffset": {
                 "total": round(emissions_kg, 2),
                 "thisMonth": round(monthly_offset_kg, 2),
                 "target": monthly_target
-            },
-            "marketPrice": {
-                "current": round(current_price, 2),
-                "change24h": round(change_24h, 2),
-                "trend": trend
             }
         }, status=status.HTTP_200_OK)
 
@@ -168,7 +420,7 @@ def dashboard_analytics(request):
             "error": str(e),
             "totalCreditsOwned": 0,
             "creditsTraded": {"today": 0, "thisWeek": 0},
-            "marketPrice": {"current": 50.0, "change24h": 0},
+            "marketPrice": {"current": 50.0, "change24h": 0, "trend": []},
             "emissionsOffset": {"total": 0, "thisMonth": 0, "target": 1000}
         }, status=status.HTTP_200_OK)
 
