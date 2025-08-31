@@ -1,16 +1,12 @@
-from django.shortcuts import render
-
-# Create your views here.
-
 import json
 import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-
 from h2ledger.settings import GEMINI_API_KEY
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.decorators import api_view, permission_classes
 
-
+# Your local knowledge base
 KNOWLEDGE_BASE = {
     "project_overview": {
         "name": "Hydrogen Credit Trading Platform",
@@ -67,18 +63,19 @@ KNOWLEDGE_BASE = {
 
 
 @csrf_exempt
+@permission_classes([AllowAny])
 def chatbot_view(request):
     if request.method != "POST":
         return JsonResponse({"error": "Only POST allowed"}, status=405)
 
     try:
-        data = json.loads(request.body.decode("utf-8"))
-        user_question = data.get("question")
+        body = json.loads(request.body.decode("utf-8"))
+        user_question = body.get("question")
 
         if not user_question:
             return JsonResponse({"error": "Missing 'question' field"}, status=400)
 
-        # Prepare payload for Gemini API
+        # Build prompt
         prompt = (
             "You are an assistant for a Hackathon project. "
             "Use the following knowledge base to answer clearly and factually. "
@@ -87,31 +84,43 @@ def chatbot_view(request):
             f"User Question: {user_question}"
         )
 
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {settings.GEMINI_API_KEY}"
-        }
-
-        import requests
+        print("Gemini Key:", GEMINI_API_KEY)
 
 
+        # Gemini endpoint (API key in header)
         url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent"
+
         headers = {
             "Content-Type": "application/json",
-            "x-goog-api-key": GEMINI_API_KEY
-        }
-        data = {
-            "contents": [{"parts":[{"text": prompt}]}]
+            "x-goog-api-key": "AIzaSyCihZkP5WL4aO0HmhBn-gf89xmyahMyFb4"
         }
 
-        response = requests.post(url, headers=headers, json=data)
-        print(response.json())
+        payload = {
+            "contents": [
+                {"parts": [{"text": prompt}]}
+            ]
+        }
 
+        response = requests.post(url, headers=headers, json=payload)
 
         if response.status_code != 200:
-            return JsonResponse({"error": "Gemini API request failed", "details": response.json()}, status=500)
+            return JsonResponse(
+                {"error": "Gemini API request failed", "details": response.json()},
+                status=response.status_code
+            )
 
-        ai_answer = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        result = response.json()
+        ai_answer = (
+            result.get("candidates", [{}])[0]
+                .get("content", {})
+                .get("parts", [{}])[0]
+                .get("text", "⚠️ No response generated")
+        )
+        result = response.json()
+        try:
+            ai_answer = result["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception:
+            ai_answer = "Sorry, I couldn’t understand Gemini’s response."
 
         return JsonResponse({"answer": ai_answer})
 

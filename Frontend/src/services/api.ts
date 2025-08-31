@@ -1,8 +1,12 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosRequestConfig } from "axios"
-import { tokenStorage } from "../utils/token"
+import axios, {
+  AxiosInstance,
+  InternalAxiosRequestConfig,
+  AxiosRequestConfig,
+} from "axios";
+import { tokenStorage } from "../utils/token";
 
 class ApiService {
-  private api: AxiosInstance
+  private api: AxiosInstance;
 
   constructor() {
     this.api = axios.create({
@@ -10,94 +14,96 @@ class ApiService {
       headers: {
         "Content-Type": "application/json",
       },
-    })
+    });
 
     // Request interceptor: attach token
     this.api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-      const token = tokenStorage.getAccessToken()
+      const token = tokenStorage.getAccessToken();
       if (token && config.headers) {
-        const authHeader = `Bearer ${token}`
+        const authHeader = `Bearer ${token}`;
         if (typeof config.headers.set === "function") {
-          config.headers.set("Authorization", authHeader)
+          config.headers.set("Authorization", authHeader);
         } else {
-          config.headers["Authorization"] = authHeader
+          (config.headers as any)["Authorization"] = authHeader;
         }
       }
-      return config
-    })
+      return config;
+    });
 
-    // Response interceptor for global error handling
+    // Response interceptor
     this.api.interceptors.response.use(
-      response => response,
-      error => {
+      (response) => response,
+      (error) => {
         if (error.response?.status === 401) {
-          // Handle unauthorized access
-          tokenStorage.removeAccessToken()
-          // Redirect to login or show error message
+          tokenStorage.removeAccessToken();
         }
-        return Promise.reject(error)
+        return Promise.reject(error);
       }
-    )
+    );
   }
 
   get<T = any>(url: string, config?: AxiosRequestConfig) {
-    return this.api.get<T>(url, config)
+    return this.api.get<T>(url, config);
   }
 
   post<T = any>(url: string, data?: any, config?: AxiosRequestConfig) {
-    return this.api.post<T>(url, data, config)
+    return this.api.post<T>(url, data, config);
   }
 
   put<T = any>(url: string, data?: any, config?: AxiosRequestConfig) {
-    return this.api.put<T>(url, data, config)
+    return this.api.put<T>(url, data, config);
   }
 
   delete<T = any>(url: string, config?: AxiosRequestConfig) {
-    return this.api.delete<T>(url, config)
+    return this.api.delete<T>(url, config);
   }
 
-  // Dashboard Analytics
+  // ---------------- Dashboard APIs ----------------
   getDashboardAnalytics() {
-    return this.get('/api/dashboard/analytics/')
+    return this.get("/api/dashboard/analytics/");
   }
 
   getDashboardTransactions(limit = 10) {
-    return this.get(`/api/dashboard/transactions/?limit=${limit}`)
+    return this.get(`/api/dashboard/transactions/?limit=${limit}`);
   }
 
-  // Market Data
+  // ---------------- Market Data ----------------
   getMarketData() {
-    return this.get('/api/market/data/')
+    return this.get("/api/market/data/");
   }
 
-  // Trading
+  // ---------------- Trading ----------------
   getTradingOrders() {
-    return this.get('/api/trading/orders/')
+    return this.get("/api/trading/orders/");
   }
 
   createTradingOrder(orderData: {
-    order_type: 'buy' | 'sell'
-    credit_batch?: number
-    quantity: number
-    price_per_credit: number
-    expires_at?: string
+    order_type: "buy" | "sell";
+    credit_batch?: number;
+    quantity: number;
+    price_per_credit: number;
+    expires_at?: string;
   }) {
-    return this.post('/api/trading/orders/', orderData)
+    return this.post("/api/trading/orders/", orderData);
   }
 
-  // Burn Credits for Emissions Offset
   burnCredits(creditIds: number[]) {
-    return this.post('/api/trading/burn/', { credit_ids: creditIds })
+    return this.post("/api/trading/burn/", { credit_ids: creditIds });
   }
 
-  // Credits
+  // ---------------- Credits ----------------
   getCredits(page = 1, limit = 10) {
-    return this.get(`/api/credits/?page=${page}&limit=${limit}`)
+    return this.get(`/api/credits/?page=${page}&limit=${limit}`);
   }
 
   getCreditDetail(creditId: number) {
-    return this.get(`/api/credits/${creditId}/`)
+    return this.get(`/api/credits/${creditId}/`);
+  }
+
+  // ---------------- Chatbot ----------------
+  sendChatMessage(question: string) {
+    return this.post<{ answer: string }>("/kb/chatbot/", { question });
   }
 }
 
-export const apiService = new ApiService()
+export const apiService = new ApiService();

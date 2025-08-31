@@ -6,9 +6,16 @@ import { Card, CardContent } from '../components/ui/card';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useState } from 'react';
 
-const Dashboard = () => {
+// 🟢 Import Chatbot + Toggle
+import Chatbot from "../components/chatbot/chatbot";
+import ChatToggle from '../components/chatbot/ChatToggle';
+
+const Dashboard = () => {   
   const { data, loading, error, refetch } = useDashboardData();
   const [activeTab, setActiveTab] = useState('overview');
+
+  // 🟢 Chatbot toggle state
+  const [showChat, setShowChat] = useState(false);
 
   const LoadingView = () => (
     <div className="flex justify-center items-center min-h-screen">
@@ -41,7 +48,7 @@ const Dashboard = () => {
   if (!data) return <EmptyView />;
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto py-8 px-4 relative">
       <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
       
       {/* Tab Navigation */}
@@ -94,6 +101,12 @@ const Dashboard = () => {
       {activeTab === 'trading' && (
         <TradingPanel />
       )}
+
+      {/* 🟢 Floating Chatbot */}
+      <div className="fixed bottom-6 right-6 z-50">
+        {showChat && <Chatbot />}  {/* Chatbot is now fully connected via apiService */}
+        <ChatToggle onClick={() => setShowChat(!showChat)} isOpen={showChat} />
+      </div>
     </div>
   );
 };
