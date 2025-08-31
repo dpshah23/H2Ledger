@@ -33,4 +33,7 @@ urlpatterns = [
     # Credits endpoints
     path("credits/", list_credits, name="list_credits"),
     path("credits/<int:credit_id>/", credit_detail, name="credit_detail"),
+
+    # Leaderboard endpoint
+    path("leaderboard/", hydrogen_leaderboard, name="hydrogen_leaderboard"),
 ]
