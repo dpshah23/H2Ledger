@@ -1,0 +1,53 @@
+{
+  "project_overview": {
+    "name": "Hydrogen Credit Trading Platform",
+    "theme": "Green Hydrogen Fuel & Blue Carbon Ecosystem",
+    "description": "A blockchain-based platform where producers, buyers, and verifiers can trade and validate hydrogen credits in a transparent, tamper-proof manner."
+  },
+  "roles": {
+    "producer": "Can generate (mint) new hydrogen credits, transfer them, or use them. Producers can also act as buyers when needed.",
+    "buyer": "Can purchase hydrogen credits from producers or other buyers. Buyers can also transfer credits to others.",
+    "verifier": "A trusted authority that verifies the authenticity of hydrogen credit batches before they can be traded."
+  },
+  "authentication": {
+    "method": "Users authenticate via wallet address (Metamask).",
+    "note": "No private keys are stored in the backend. Signing of transactions always happens locally in the user's wallet."
+  },
+  "api_endpoints": {
+    "auth": {
+      "signup": "POST /auth/signup/ - Register a new user with wallet address and role.",
+      "login": "POST /auth/login/ - Authenticate user by wallet address and return token."
+    },
+    "credits": {
+      "mint": "POST /api/mint/ - Producers mint new credits (requires verifier approval).",
+      "transfer": "POST /api/transfer/ - Transfer credits between wallets.",
+      "use": "POST /api/use/ - Mark credits as used (retired).",
+      "batch_verification": "POST /api/batch/ - Verifier validates a batch of credits."
+    },
+    "dashboard": {
+      "view": "GET /api/dashboard/ - Fetch user-specific information like balance, transfers, and history."
+    }
+  },
+  "ai_chatbot": {
+    "integration": "Gemini API",
+    "purpose": "Acts as a knowledge assistant for the hackathon project.",
+    "capabilities": [
+      "Answer user queries about platform workflow, endpoints, and roles.",
+      "Provide guidance on how to mint, transfer, or use credits (conceptual explanation).",
+      "Retrieve and explain data from the dashboard or API endpoints.",
+      "Explain project theme and hackathon-specific context."
+    ],
+    "limitations": [
+      "Does not execute blockchain transactions.",
+      "Does not access or require private keys.",
+      "Does not replace Metamask or wallet signing process.",
+      "Only works with knowledge base and public API responses."
+    ],
+    "sample_prompts": [
+      "Explain how producers mint credits.",
+      "How does verification of batches work?",
+      "What can buyers and producers both do?",
+      "Show me my credit balance from the dashboard API."
+    ]
+  }
+}

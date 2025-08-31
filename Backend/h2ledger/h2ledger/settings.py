@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 ]
 
+
 # Rest framework 
 
 REST_FRAMEWORK={
@@ -133,6 +134,8 @@ DATABASES = {
         'PORT': os.getenv('PORT'),                    # The default MySQL port
     }
 }
+
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 
 # Password validation
