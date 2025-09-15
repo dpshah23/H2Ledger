@@ -21,7 +21,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
     path('auth1/', include('auth1.urls')),
-    path('kb/', include('kb.urls')),
+    # path('kb/', include('kb.urls')),  # Temporarily disabled due to missing requests module
     path('auth/', include('auth1.urls')),
     # path('auth1/', include('auth1.urls')),
 ]

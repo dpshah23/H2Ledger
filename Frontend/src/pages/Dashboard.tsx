@@ -4,7 +4,8 @@ import { TransactionTable } from '../components/TransactionTable';
 import TradingPanel from '../components/TradingPanel';
 import { Card, CardContent } from '../components/ui/card';
 import { useDashboardData } from '../hooks/useDashboardData';
-import { useState } from 'react';
+import { dashboardService, Transaction } from '../services/dashboard';
+import { useState, useEffect } from 'react';
 
 // 🟢 Import Chatbot + Toggle
 import Chatbot from "../components/chatbot/chatbot";
@@ -13,9 +14,29 @@ import ChatToggle from '../components/chatbot/ChatToggle';
 const Dashboard = () => {   
   const { data, loading, error, refetch } = useDashboardData();
   const [activeTab, setActiveTab] = useState('overview');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
 
   // 🟢 Chatbot toggle state
   const [showChat, setShowChat] = useState(false);
+
+  // Fetch transactions
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        setTransactionsLoading(true);
+        const fetchedTransactions = await dashboardService.getTransactions(10);
+        setTransactions(fetchedTransactions);
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+        setTransactions([]);
+      } finally {
+        setTransactionsLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
 
   const LoadingView = () => (
     <div className="flex justify-center items-center min-h-screen">
@@ -89,7 +110,7 @@ const Dashboard = () => {
             <Card>
               <CardContent>
                 <TransactionTable 
-                  transactions={[]} 
+                  transactions={transactions} 
                   title="Recent Transactions"
                 />
               </CardContent>

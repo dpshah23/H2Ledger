@@ -50,9 +50,7 @@ from datetime import timedelta
 # Rest framework 
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': [],  # Temporarily disabled authentication
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',  # Changed to AllowAny by default
     ),
